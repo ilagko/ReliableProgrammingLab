@@ -1,21 +1,34 @@
-"""Initialize demo data in a chosen local SQLite file."""
+"""Initialize a fresh demo database; running again preserves existing data."""
+from contextlib import closing
 import sqlite3
 import sys
 
 SCHEMA = '''
-CREATE TABLE IF NOT EXISTS products (sku TEXT PRIMARY KEY, name TEXT NOT NULL, price REAL NOT NULL, stock INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS saved_cart (user_id TEXT NOT NULL, sku TEXT NOT NULL, quantity INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS orders (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, amount REAL, status TEXT, request_id TEXT);
+CREATE TABLE IF NOT EXISTS products (
+    sku TEXT PRIMARY KEY, name TEXT NOT NULL, price TEXT NOT NULL,
+    stock INTEGER NOT NULL CHECK(typeof(stock) = 'integer' AND stock >= 0)
+);
+CREATE TABLE IF NOT EXISTS saved_cart (
+    user_id TEXT NOT NULL, sku TEXT NOT NULL,
+    quantity INTEGER NOT NULL CHECK(typeof(quantity) = 'integer' AND quantity > 0),
+    PRIMARY KEY(user_id, sku)
+);
+CREATE TABLE IF NOT EXISTS orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL,
+    amount TEXT NOT NULL, status TEXT NOT NULL,
+    request_id TEXT NOT NULL CHECK(length(trim(request_id)) > 0),
+    UNIQUE(user_id, request_id)
+);
 '''
 
 
 def initialize(db_path='shop.db'):
-    with sqlite3.connect(db_path) as conn:
+    with closing(sqlite3.connect(db_path)) as conn, conn:
         conn.executescript(SCHEMA)
         conn.executemany('INSERT OR IGNORE INTO products VALUES (?, ?, ?, ?)', [
-            ('LAP-01', 'Laptop', 999.99, 5),
-            ('MOU-01', 'Wireless mouse', 29.95, 20),
-            ('USB-01', 'USB cable', 9.99, 50),
+            ('LAP-01', 'Laptop', '999.99', 5),
+            ('MOU-01', 'Wireless mouse', '29.95', 20),
+            ('USB-01', 'USB cable', '9.99', 50),
         ])
 
 
